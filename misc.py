@@ -25,7 +25,7 @@ def readData(path, reshape=False, split=False):
     else:
         features = arr[1:, :]
 
-    labels = np.expand_dims(arr[0, :], axis=0)
+    labels = np.expand_dims(arr[0, :], axis=0).astype(int)
 
     if split:
         X_train, X_test, Y_train, Y_test = train_test_split(features.T, labels.T, test_size=0.2, random_state=1)

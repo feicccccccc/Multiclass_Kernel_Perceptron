@@ -9,7 +9,7 @@ from misc import *
 # 1 vs All for Multi-class classification
 
 class KPerceptron():
-    def __init__(self, X_train, Y_train, hparams=None):
+    def __init__(self, X_train, Y_train, X_test, Y_test, hparams=None):
 
         if hparams is None:
             hparams = {'kernel': 'poly',
@@ -20,6 +20,9 @@ class KPerceptron():
 
         self.X_train = X_train  # (n, m)
         self.Y_train = Y_train  # (1, m)
+        self.X_test = X_test
+        self.Y_test = Y_test
+
         self.m = X_train.shape[1]
         self.num_class = hparams['num_class']
         self.epochs = hparams['epochs']
@@ -33,16 +36,22 @@ class KPerceptron():
         elif hparams['kernel'] == 'gauss':
             self.kernel = lambda x1, x2: self._gauss_ker(x1, x2, hparams['c'])
 
-        self._kernelMatrics = self._computeKernelMatrics()
+        # We compute the kernel before hand to reduce repeated computation
+        # Equivalence to online learning, see pdf
+        self._kernelMatrics_train = self._computeKernelMatrics(X_train)
+        self._kernelMatrics_test = self._computeKernelMatrics(X_test)
 
     def predict(self, input):
-        ker_product = self.kernel(self.X_train, input)
+        ker_product = self.kernel(input, self.X_train)
         output = self._alphasMatrics.T @ ker_product  # Dual form computation
         return np.argmax(output)  # return the first occurrence term (break even)
 
-
     def train(self):
-        mistake_his = []
+        # Record performance for each epoch
+        acc_train_his = []
+        acc_test_his = []
+        cur_mistake = 0
+
         # Training Loop
         # Full derivation in report
         for epoch in range(self.epochs):
@@ -52,14 +61,14 @@ class KPerceptron():
                 Two variant of update rule
                 1. Update only when the final output is incorrect (y =/= f(x))
                 2. Update when the individual hyperplane is incorrect, even the final one is correct
-                We will use the second method here.
+                We will use the 2nd method here.
                 """
                 cur_X = self.X_train[:, i]
                 cur_Y = self.Y_train[:, i]
 
                 # Predict
                 # y_hat = self.predict(cur_X)  # Not efficient for training
-                f_x = self._alphasMatrics.T @ self._kernelMatrics[i]  # Look up precomputed kernel
+                f_x = self._alphasMatrics.T @ self._kernelMatrics_train[i]  # Look up precomputed kernel
                 y_hat = np.argmax(f_x)
                 if cur_Y != y_hat:
                     cur_mistake += 1
@@ -90,24 +99,35 @@ class KPerceptron():
                         if c == cur_Y:
                             self._alphasMatrics[i][c] += 1  # if writing down the w update in dual form
 
-            print("Epoch: {}, Mistakes: {}, Acc: {:.3f}".format(epoch,
-                                                                cur_mistake,
-                                                                1-(cur_mistake/self.m)))
-            mistake_his.append(cur_mistake)
-        return mistake_his
+            _, cur_acc_train = self._train_err()
+            _, cur_acc_test = self._test_err()
+            print("Epoch: {}, Mistakes: {}, Acc_train: {:.3f}, Acc_test: {:.3f}".format(epoch,
+                                                                                        cur_mistake,
+                                                                                        cur_acc_train,
+                                                                                        cur_acc_test))
+            acc_train_his.append(cur_acc_train)
+            acc_test_his.append(cur_acc_test)
 
-    def test(self):
-        # Mistakes here is the final accuracy, which does not do multiple count
-        # batch prediction
-        all_fx = self._alphasMatrics.T @ self._kernelMatrics
+        return acc_train_his, acc_test_his
+
+    # A little bit redundant here but it is easier to read in other loop
+    def _train_err(self):
+        all_fx = self._alphasMatrics.T @ self._kernelMatrics_train
         all_y_hat = np.argmax(all_fx, axis=0)
-        mistakes = np.sum(self.Y_train == all_y_hat)
-        acc = mistakes / self.Y_train.shape[1]
-        return mistakes, acc
+        correct = np.sum(self.Y_train == all_y_hat)
+        acc = correct / self.Y_train.shape[1]
+        return correct, acc
+
+    def _test_err(self):
+        all_fx = self._alphasMatrics.T @ self._kernelMatrics_test
+        all_y_hat = np.argmax(all_fx, axis=0)
+        correct = np.sum(self.Y_test == all_y_hat)
+        acc = correct / self.Y_test.shape[1]
+        return correct, acc
 
     def _poly_ker(self, x1, x2, d=3):
         # homogeneous Polynomial kernel (no bias)
-        output = np.power((x1.T @ x2), d)
+        output = np.power((x2.T @ x1), d)
         return output
 
     def _gauss_ker(self, x1, x2, c=0.1):
@@ -115,9 +135,9 @@ class KPerceptron():
         output = np.power((x1.T @ x2), c)
         return output
 
-    def _computeKernelMatrics(self):
+    def _computeKernelMatrics(self, input):
         # Calculate all possible inner product (at the feature space) on the data set
-        kerMatrics = self.kernel(self.X_train, self.X_train)
+        kerMatrics = self.kernel(input, self.X_train)
         # (number of samples, number of samples)
         return kerMatrics
 
@@ -129,8 +149,8 @@ class KPerceptron():
 
 # Test function
 if __name__ == '__main__':
-    Xtrain, Ytrain = readData('zipcombo.dat')
-    ker_perceptron = KPerceptron(Xtrain, Ytrain)
+    X_train, Y_train = readData('zipcombo.dat')
+    ker_perceptron = KPerceptron(X_train, Y_train)
 
     # # Test function for kernel
     # test_x1 = np.array([1, 3, 5])
