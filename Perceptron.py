@@ -7,28 +7,30 @@ from misc import *
 
 # Kernel Perceptron
 # 1 vs All for Multi-class classification
-
-class KPerceptron():
-    def __init__(self, X_train, Y_train, X_test, Y_test, hparams=None):
+class KPerceptron:
+    def __init__(self, X_train, Y_train, X_val, Y_val, hparams=None):
 
         if hparams is None:
             hparams = {'kernel': 'poly',
                        'd': 3,
                        'num_class': 3,
-                       'epochs': 20,
-                       'n_dims': 256}
+                       'max_epochs': 20,
+                       'n_dims': 256,
+                       'early_stopping': False,
+                       'patience': 5}
 
         self.X_train = X_train  # (n, m)
         self.Y_train = Y_train  # (1, m)
-        self.X_test = X_test
-        self.Y_test = Y_test
+        self.X_val = X_val  # Poor naming here, following q1 naming, I prefer validation set
+        self.Y_val = Y_val  # In the latter part this is use as a validation set
 
         self.m = X_train.shape[1]
         self.num_class = hparams['num_class']
-        self.epochs = hparams['epochs']
+        self.epochs = hparams['max_epochs']
 
-        self.weight = np.zeros((hparams['n_dims'], 1))  # Not used in dual form
+        # self.weight = np.zeros((hparams['n_dims'], 1))  # Not used in dual form
         self._alphasMatrics = np.zeros((self.m, self.num_class))  # dual form params, each col represent a hyperplane
+        self._stored_Xtrain = self.X_train  # Keep a copy of training set to load the weight
 
         # Encapsulate the hyper parameter c/d
         if hparams['kernel'] == 'poly':
@@ -36,21 +38,40 @@ class KPerceptron():
         elif hparams['kernel'] == 'gauss':
             self.kernel = lambda x1, x2: self._gauss_ker(x1, x2, hparams['c'])
 
+        self.earlyStopping = hparams['early_stopping']
+        self.patience = hparams['patience']
+
         # We compute the kernel before hand to reduce repeated computation
-        # Equivalence to online learning, see pdf
+        # Equivalence to online learning since alpha is init as 0, see pdf
         self._kernelMatrics_train = self._computeKernelMatrics(X_train)
-        self._kernelMatrics_test = self._computeKernelMatrics(X_test)
+        self._kernelMatrics_val = self._computeKernelMatrics(X_val)
+
+    def save_weight(self, path):
+        with open(path, 'wb') as f:
+            np.save(f, self._alphasMatrics)
+            np.save(f, self._stored_Xtrain)
+
+    def load_weight(self, path):
+        with open(path, 'rb') as f:
+            self._alphasMatrics = np.load(f)
+            self._stored_Xtrain = np.load(f)
 
     def predict(self, input):
-        ker_product = self.kernel(input, self.X_train)
+        # input shape: (n, m)
+        ker_product = self.kernel(input, self._stored_Xtrain)
         output = self._alphasMatrics.T @ ker_product  # Dual form computation
         return np.argmax(output)  # return the first occurrence term (break even)
 
     def train(self):
         # Record performance for each epoch
-        acc_train_his = []
-        acc_test_his = []
-        cur_mistake = 0
+        err_train_his = []
+        err_val_his = []
+
+        not_improve_count = 0
+        lowest_val_err = 1
+
+        best_weight = self._alphasMatrics
+        best_epoch = 0
 
         # Training Loop
         # Full derivation in report
@@ -93,38 +114,61 @@ class KPerceptron():
                         # Case 1, 2, 3
                         if c != cur_Y:
                             # alphaMatrics : (m, class)
-                            self._alphasMatrics[i][c] -= 1  # Update in dual space, should be obvious
+                            self._alphasMatrics[i][c] -= 1  # Update dual params, should be obvious
                     if f_x[c] <= 0:
                         # Case 4, 5
                         if c == cur_Y:
                             self._alphasMatrics[i][c] += 1  # if writing down the w update in dual form
 
-            _, cur_acc_train = self._train_err()
-            _, cur_acc_test = self._test_err()
-            print("Epoch: {}, Mistakes: {}, Acc_train: {:.3f}, Acc_test: {:.3f}".format(epoch,
+            _, cur_err_train = self._train_err()
+            _, cur_err_val = self._val_err()
+            print("Epoch: {}, Mistakes: {}, err_train: {:.3f}, err_val: {:.3f}".format(epoch,
                                                                                         cur_mistake,
-                                                                                        cur_acc_train,
-                                                                                        cur_acc_test))
-            acc_train_his.append(cur_acc_train)
-            acc_test_his.append(cur_acc_test)
+                                                                                        cur_err_train,
+                                                                                        cur_err_val))
+            if lowest_val_err <= cur_err_val:
+                not_improve_count += 1
+            else:
+                not_improve_count = 0
+                lowest_val_err = cur_err_val
+                best_weight = self._alphasMatrics
+                best_epoch = epoch
 
-        return acc_train_his, acc_test_his
+            if not_improve_count == self.patience:
+                print("=== Early Stopping at epoch {}, best result at epoch {} ===".format(epoch, best_epoch))
+                self._alphasMatrics = best_weight
+                break
+
+            err_train_his.append(cur_err_train)
+            err_val_his.append(cur_err_val)
+
+        return err_train_his, err_val_his
+
+    def predict_and_visualise(self, input):
+        # For 1 sample only
+        # TODO: Raise error for incorrect dimension
+        result = self.predict(input)
+        print("Predicted Label: {}".format(result))
+        img = input.reshape(16, 16)
+        plt.imshow(img, cmap='gray')
+        plt.show()
 
     # A little bit redundant here but it is easier to read in other loop
     def _train_err(self):
         all_fx = self._alphasMatrics.T @ self._kernelMatrics_train
         all_y_hat = np.argmax(all_fx, axis=0)
         correct = np.sum(self.Y_train == all_y_hat)
-        acc = correct / self.Y_train.shape[1]
-        return correct, acc
+        err = 1 - correct / self.Y_train.shape[1]
+        return correct, err
 
-    def _test_err(self):
-        all_fx = self._alphasMatrics.T @ self._kernelMatrics_test
+    def _val_err(self):
+        all_fx = self._alphasMatrics.T @ self._kernelMatrics_val
         all_y_hat = np.argmax(all_fx, axis=0)
-        correct = np.sum(self.Y_test == all_y_hat)
-        acc = correct / self.Y_test.shape[1]
-        return correct, acc
+        correct = np.sum(self.Y_val == all_y_hat)
+        err = 1 - correct / self.Y_val.shape[1]
+        return correct, err
 
+    # Best I can do without GPU, take up almost 50% of running time
     def _poly_ker(self, x1, x2, d=3):
         # homogeneous Polynomial kernel (no bias)
         output = np.power((x2.T @ x1), d)
@@ -149,8 +193,17 @@ class KPerceptron():
 
 # Test function
 if __name__ == '__main__':
-    X_train, Y_train = readData('zipcombo.dat')
-    ker_perceptron = KPerceptron(X_train, Y_train)
+    X_train, X_test, Y_train, Y_test = readData('zipcombo.dat', split=True)
+
+    hparams = {'kernel': 'poly',
+               'd': 3,
+               'num_class': 10,
+               'max_epochs': 10,
+               'n_dims': 256,
+               'early_stopping': False,
+               'patience': 5}
+
+    ker_perceptron = KPerceptron(X_train, Y_train, X_test, Y_test, hparams=hparams)
 
     # # Test function for kernel
     # test_x1 = np.array([1, 3, 5])
@@ -163,6 +216,12 @@ if __name__ == '__main__':
     # # Check predict function
     # print(ker_perceptron.predict(np.random.rand(256, 1)))
 
-    # Check train and test
-    ker_perceptron.train()
-    print(ker_perceptron.test())
+    # # Check train and test
+    # ker_perceptron.train()
+    # ker_perceptron.save_weight('./weight/test.npy')
+
+    # Predict and Visualise
+    ker_perceptron.load_weight('./weight/test.npy')
+    for i in range(7):
+        ker_perceptron.predict_and_visualise(X_train[:, i])
+
