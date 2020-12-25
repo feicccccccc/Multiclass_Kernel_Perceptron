@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.model_selection import KFold
 
 from misc import *
 
@@ -21,7 +22,7 @@ class KPerceptron:
 
         self.X_train = X_train  # (n, m)
         self.Y_train = Y_train  # (1, m)
-        self.X_val = X_val  # Poor naming here, following q1 naming, I prefer validation set
+        self.X_val = X_val  # Not following q1 naming, I prefer validation set
         self.Y_val = Y_val  # In the latter part this is use as a validation set
 
         self.m = X_train.shape[1]
@@ -47,6 +48,7 @@ class KPerceptron:
         self._kernelMatrics_val = self._computeKernelMatrics(X_val)
 
     def save_weight(self, path):
+        # save the best result
         with open(path, 'wb') as f:
             np.save(f, self._alphasMatrics)
             np.save(f, self._stored_Xtrain)
@@ -126,18 +128,19 @@ class KPerceptron:
                                                                                         cur_mistake,
                                                                                         cur_err_train,
                                                                                         cur_err_val))
-            if lowest_val_err <= cur_err_val:
-                not_improve_count += 1
-            else:
-                not_improve_count = 0
-                lowest_val_err = cur_err_val
-                best_weight = self._alphasMatrics
-                best_epoch = epoch
+            if self.earlyStopping:
+                if lowest_val_err <= cur_err_val:
+                    not_improve_count += 1
+                else:
+                    not_improve_count = 0
+                    lowest_val_err = cur_err_val
+                    best_weight = self._alphasMatrics
+                    best_epoch = epoch
 
-            if not_improve_count == self.patience:
-                print("=== Early Stopping at epoch {}, best result at epoch {} ===".format(epoch, best_epoch))
-                self._alphasMatrics = best_weight
-                break
+                if not_improve_count == self.patience:
+                    print("=== Early Stopping at epoch {}, best result at epoch {} ===".format(epoch, best_epoch))
+                    self._alphasMatrics = best_weight
+                    break
 
             err_train_his.append(cur_err_train)
             err_val_his.append(cur_err_val)
@@ -153,7 +156,7 @@ class KPerceptron:
         plt.imshow(img, cmap='gray')
         plt.show()
 
-    # A little bit redundant here but it is easier to read in other loop
+    # A little bit redundant here but it is easier to read in other loop with different name
     def _train_err(self):
         all_fx = self._alphasMatrics.T @ self._kernelMatrics_train
         all_y_hat = np.argmax(all_fx, axis=0)
@@ -193,17 +196,17 @@ class KPerceptron:
 
 # Test function
 if __name__ == '__main__':
-    X_train, X_test, Y_train, Y_test = readData('zipcombo.dat', split=True)
+    X_train, X_test, Y_train, Y_test = readData('data/zipcombo.dat', split=True)
 
     hparams = {'kernel': 'poly',
                'd': 3,
                'num_class': 10,
                'max_epochs': 10,
                'n_dims': 256,
-               'early_stopping': False,
+               'early_stopping': True,
                'patience': 5}
 
-    ker_perceptron = KPerceptron(X_train, Y_train, X_test, Y_test, hparams=hparams)
+    # ker_perceptron = KPerceptron(X_train, Y_train, X_test, Y_test, hparams=hparams)
 
     # # Test function for kernel
     # test_x1 = np.array([1, 3, 5])
@@ -220,8 +223,14 @@ if __name__ == '__main__':
     # ker_perceptron.train()
     # ker_perceptron.save_weight('./weight/test.npy')
 
-    # Predict and Visualise
-    ker_perceptron.load_weight('./weight/test.npy')
-    for i in range(7):
-        ker_perceptron.predict_and_visualise(X_train[:, i])
+    # # Predict and Visualise
+    # ker_perceptron.load_weight('./weight/test.npy')
+    # for i in range(7):
+    #     ker_perceptron.predict_and_visualise(X_train[:, i])
 
+    # # Check K-fold Validation
+    # kf = KFold(n_splits=5)
+    # for train_index, val_index in kf.split(X_train.T):
+    #     # print(train_index, val_index)
+    #     print(X_train[:, train_index].shape)
+    #     print(X_train[:, val_index].shape)
