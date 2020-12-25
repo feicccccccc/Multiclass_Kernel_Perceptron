@@ -62,7 +62,7 @@ class KPerceptron:
         # input shape: (n, m)
         ker_product = self.kernel(input, self._stored_Xtrain)
         output = self._alphasMatrics.T @ ker_product  # Dual form computation
-        return np.argmax(output)  # return the first occurrence term (break even)
+        return np.argmax(output, axis=0)  # return the first occurrence term (break even)
 
     def train(self):
         # Record performance for each epoch

@@ -1,6 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
+
 from Perceptron import *
+from confusion_matrics import *
 
 
 def q1():
@@ -33,12 +36,6 @@ def q1():
     # ax.plot(log_avg_test_history[3, :], '--', label='test')
 
     ax.legend()
-    # For train, no d = 1
-    # plt.ylim([-2.45, -2.25])
-
-    # For valid, no d = 1
-    plt.ylim([-2.23, -2.05])
-
     plt.show()
 
 
@@ -56,28 +53,44 @@ def q2():
     all_d_his = np.zeros((7, 20))  # (run, poly)
 
     for run in range(20):
-        with open('result/q2/q2_run_'+str(run)+'_all_d_err.npy', 'rb') as f:
+        with open('result/q2/q2_run_' + str(run) + '_all_d_err.npy', 'rb') as f:
             d_history = np.load(f)
             all_d_his[:, run] = d_history[:, 0]
 
     mean_d = np.mean(all_d_his, axis=1)
     std_d = np.std(all_d_his, axis=1)
 
-    x = np.arange(1, 7)
+    # This is bad just to do max on each 20 run
+    # Here we plot the average error
+    x = np.arange(1, 7 + 1)
     print(mean_d, std_d)
     fig, ax = plt.subplots()
-    ax.plot(x, mean_d)
-    ax.errorbar(x, std_d)
+    ax.errorbar(x, mean_d, yerr=std_d, fmt='-o')
     plt.show()
 
 
+def q3():
+    X_train, X_test, Y_train, Y_test = readData('data/zipcombo.dat', split=True)
 
-    # test_perceptron = KPerceptron(X_train, Y_train, X_test, Y_test, hparams=hparams)
+    hparams = {'kernel': 'poly',
+               'd': 7,
+               'num_class': 10,
+               'max_epochs': 20,
+               'n_dims': 256,
+               'early_stopping': True,
+               'patience': 5}
 
-    # test_perceptron.load_weight('./weight/q2/q2_d3_run0_weight.npy')
-    # for i in range(7):
-    #     test_perceptron.predict_and_visualise(X_train[:, i])
+    test_perceptron = KPerceptron(X_train, Y_train, X_test, Y_test, hparams=hparams)
 
+    all_confmat = np.zeros((10, 10, 20))  # (class, class, run)
+    for i in range(20):
+        path = './weight/q2/q2_run'+str(i)+'*.npy'
+        test_perceptron.load_weight(path)
+        pred = test_perceptron.predict(X_test)
+        all_confmat[:, :, i] = confusion_matrix(Y_test[0, :], pred)
+
+    conf_fig = plot_confusion_matrix(all_confmat)
+    conf_fig.show()
 
 if __name__ == "__main__":
-    q2()
+    q3()

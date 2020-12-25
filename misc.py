@@ -37,7 +37,7 @@ def readData(path, reshape=False, split=False):
 # Test function
 if __name__ == '__main__':
     # Data import test
-    X, Y = readData('dtrain123.dat', reshape=True)
+    X, Y = readData('./data/zipcombo.dat', reshape=True)
     print(X.shape)
     print(Y.shape)
     print(np.max(Y))
