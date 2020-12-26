@@ -15,11 +15,12 @@ def plot_confusion_matrix(all_matrix, class_names=class_name):
     # This is really bad not having the diagonal element. I am not comfortable with it.
     matrix = np.mean(all_matrix, axis=2)
     std_matrix = np.std(all_matrix, axis=2)
-    bad_matrix = matrix
-    np.fill_diagonal(bad_matrix, 0)
+
+    np.fill_diagonal(matrix, 0)
+    np.fill_diagonal(std_matrix, 0)
 
     figure = plt.figure(figsize=(15, 15))
-    plt.imshow(bad_matrix, interpolation='nearest', cmap=plt.cm.Blues)
+    plt.imshow(matrix, interpolation='nearest', cmap=plt.cm.Blues)
     plt.title('Confusion Matrix')
     plt.colorbar()
     tick_marks = np.arange(len(class_names))
@@ -34,7 +35,8 @@ def plot_confusion_matrix(all_matrix, class_names=class_name):
     for i in range(matrix.shape[0]):
         for j in range(matrix.shape[1]):
             color = "white" if matrix[i, j] > threshold else "black"
-            plt.text(j, i, matrix[i, j], horizontalalignment="center", color=color)
+            result_text = "{:.2f} ± {:.2f}".format(matrix[i, j], std_matrix[i, j])
+            plt.text(j, i, result_text, horizontalalignment="center", color=color)
 
     plt.ylabel('True label')
     plt.xlabel('Predicted label')

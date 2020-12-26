@@ -172,20 +172,23 @@ class KPerceptron:
         return correct, err
 
     # Best I can do without GPU, take up almost 50% of running time
-    def _poly_ker(self, x1, x2, d=3):
+    def _poly_ker(self, t, x, d=4):
         # homogeneous Polynomial kernel (no bias)
-        output = np.power((x2.T @ x1), d)
+        output = np.power((x.T @ t), d)
         return output
 
-    def _gauss_ker(self, x1, x2, c=0.1):
-        # TODO: implement gaussian kernel
-        output = np.power((x1.T @ x2), c)
+    def _gauss_ker(self, t, x, c=0.01):
+        # Vectorised at best by numpy
+        t_sq = np.sum(np.power(t, 2), axis=0, keepdims=True)  # (num_test, 1)
+        x_sq = np.sum(np.power(x, 2), axis=0, keepdims=True)  # (num_train, 1)
+        xTt = x.T @ t
+        output = np.exp(-c * (t_sq - 2*xTt + x_sq.T))  # col broadcast x1sq, row broadcast x2sq
         return output
 
     def _computeKernelMatrics(self, input):
         # Calculate all possible inner product (at the feature space) on the data set
         kerMatrics = self.kernel(input, self.X_train)
-        # (number of samples, number of samples)
+        # (number of input samples, number of output samples)
         return kerMatrics
 
     def _test(self):
@@ -198,13 +201,13 @@ class KPerceptron:
 if __name__ == '__main__':
     X_train, X_test, Y_train, Y_test = readData('data/zipcombo.dat', split=True)
 
-    hparams = {'kernel': 'poly',
-               'd': 3,
-               'num_class': 10,
-               'max_epochs': 10,
-               'n_dims': 256,
-               'early_stopping': True,
-               'patience': 5}
+    # hparams = {'kernel': 'poly',
+    #            'd': 3,
+    #            'num_class': 10,
+    #            'max_epochs': 10,
+    #            'n_dims': 256,
+    #            'early_stopping': True,
+    #            'patience': 5}
 
     # ker_perceptron = KPerceptron(X_train, Y_train, X_test, Y_test, hparams=hparams)
 
@@ -234,3 +237,18 @@ if __name__ == '__main__':
     #     # print(train_index, val_index)
     #     print(X_train[:, train_index].shape)
     #     print(X_train[:, val_index].shape)
+
+    # # Gauss kernel
+    # hparams = {'kernel': 'gauss',
+    #            'd': 3,
+    #            'c': 0.1,
+    #            'num_class': 10,
+    #            'max_epochs': 20,
+    #            'n_dims': 256,
+    #            'early_stopping': False,
+    #            'patience': 5}
+    #
+    # ker_perceptron = KPerceptron(X_train, Y_train, X_test, Y_test, hparams=hparams)
+    # print(ker_perceptron.train())
+
+    # 1 vs 1 Multiclass perceptron

@@ -37,6 +37,7 @@ def readData(path, reshape=False, split=False):
 # Test function
 if __name__ == '__main__':
     # Data import test
+    # Image is rescale from 0:255 to -1:1
     X, Y = readData('./data/zipcombo.dat', reshape=True)
     print(X.shape)
     print(Y.shape)
