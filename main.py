@@ -247,7 +247,6 @@ def q1g():
                'patience': 5}
 
     # For record
-    # TODO: define range for c
     avg_train_history = np.zeros((len(ker_poly_c), hparams['max_epochs']))
     avg_test_history = np.zeros((len(ker_poly_c), hparams['max_epochs']))
     std_train_history = np.zeros((len(ker_poly_c), hparams['max_epochs']))

@@ -237,4 +237,4 @@ def q2g():
 
 
 if __name__ == "__main__":
-    q2g()
+    q1g()
