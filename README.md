@@ -40,8 +40,9 @@ ker_perceptron = KPerceptron(X_train, Y_train, X_test, Y_test, hparams=hparams)
 
 ## 4. one line train
 ```python
-ker_perceptron.train()
+train_history, test_history = ker_perceptron.train()
 ```
+you can get the history on training error and test error for every epoch
 
 ## 5. Get prediction
 ```python
