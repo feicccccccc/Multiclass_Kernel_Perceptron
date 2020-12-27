@@ -5,14 +5,14 @@ Simple Library for Multiclass Kernel Perceptron
 
 Easy 5 step training sequence.
 
-## 1. import library
+## 1. Import library
 
 ```python
 from Perceptron import KPerceptron
 from misc import readData
 ```
 
-## 2. define hyper parameters
+## 2. Define hyperparameters
 
 ```python
 hparams = {'kernel': 'poly',
@@ -38,7 +38,7 @@ X_train, X_test, Y_train, Y_test = readData('data/zipcombo.dat', split=True)
 ker_perceptron = KPerceptron(X_train, Y_train, X_test, Y_test, hparams=hparams)
 ```
 
-## 4. one line train
+## 4. One line train
 ```python
 train_history, test_history = ker_perceptron.train()
 ```
@@ -49,7 +49,7 @@ you can get the history on training error and test error for every epoch
 pred = ker_perceptron.predict(X_test)
 ```
 
-## 6. save weight for future use
+## 6. Save weight for future use
 ```python
 ker_perceptron.save_weight('./weight/test.npy')
 ```
@@ -57,7 +57,7 @@ Warning: The data set is part of the weight. (Kernel perceptron in dual form)
 
 If the data set is huge, the stored parameters will occupie a large space.
 
-## 7. load weight
+## 7. Load weight
 ```python
 ker_perceptron.load_weight('./weight/test.npy')
 ```
