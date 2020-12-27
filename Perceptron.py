@@ -278,7 +278,7 @@ class KPerceptron_1v1:
         all_pred = all_pred.astype(int)
 
         # Vote for each sample
-        all_y_hat = np.zeros((1, input.shape[1] ))  # TODO: Better define row and col vector assigmenet
+        all_y_hat = np.zeros((1, input.shape[1]))  # TODO: Better define row and col vector assignment
         for idx, sample in enumerate(all_pred.T):
             bin_count = np.bincount(sample, minlength=self.num_class)
             y_hat = np.argmax(bin_count)  # Break even for choosing the lower class, This is not a good practise.
@@ -341,9 +341,10 @@ class KPerceptron_1v1:
 
             _, cur_err_train = self._train_err()
             _, cur_err_val = self._val_err()
-            print("Epoch: {}, err_train: {:.3f}, err_val: {:.3f}".format(epoch,
-                                                                         cur_err_train,
-                                                                         cur_err_val))
+            print("Epoch: {}, Mistakes: {}, err_train: {:.3f}, err_val: {:.3f}".format(epoch,
+                                                                                       int(cur_err_train * self.m),
+                                                                                       cur_err_train,
+                                                                                       cur_err_val))
             if self.earlyStopping:
                 if lowest_val_err <= cur_err_val:
                     not_improve_count += 1
@@ -439,6 +440,281 @@ class KPerceptron_1v1:
         print(self.weight.shape)
 
 
+class KPerceptron_btree:
+    # achieve lowest computational time by splitting the class into binary tree
+    def __init__(self, X_train, Y_train, X_val, Y_val, hparams=None):
+
+        if hparams is None:
+            hparams = {'kernel': 'poly',
+                       'd': 3,
+                       'num_class': 3,
+                       'max_epochs': 20,
+                       'n_dims': 256,
+                       'early_stopping': False,
+                       'patience': 5}
+
+        self.X_train = X_train  # (n, m)
+        self.Y_train = Y_train  # (1, m)
+        self.X_val = X_val  # Not following q1 naming, I prefer validation set
+        self.Y_val = Y_val
+
+        self.m = X_train.shape[1]
+        self.num_class = hparams['num_class']
+        self.epochs = hparams['max_epochs']
+
+        # self.weight = np.zeros((hparams['n_dims'], 1))  # Not used in dual form
+        total_plane = int(np.ceil(np.log2(hparams['num_class'])))  # depth of the tree
+        total_node = 9
+
+        # split the tree from middle just for trying out
+        # actually we can do a tree splitting optimisation
+        # not generalised to any number of class
+        # we dont really need this, the tree is hardcoded.
+        # send me a pull request if you implement base on user define tree =)
+        # should be easy to implement with tree search algo
+        self._all_node = [(0, 1, 2, 3, 4, 5, 6, 7, 8, 9),
+                          (0, 1, 2, 3, 4),
+                          (5, 6, 7, 8, 9),
+                          (0, 1),
+                          (2, 3, 4),
+                          (5, 6),
+                          (7, 8, 9),
+                          (3, 4),
+                          (8, 9)]  # Just for sake of illustration, should use a matrices for the graph(tree)
+        # search space scale with O(2^N)
+
+        self._alphasMatrics = np.zeros((self.m, total_node))  # (number of sample, number of node in tree)
+        self._stored_Xtrain = self.X_train  # Keep a copy of training set, part of the "weight"
+
+        # Encapsulate the hyper parameter c/d
+        if hparams['kernel'] == 'poly':
+            self.kernel = lambda x1, x2: self._poly_ker(x1, x2, hparams['d'])
+        elif hparams['kernel'] == 'gauss':
+            self.kernel = lambda x1, x2: self._gauss_ker(x1, x2, hparams['c'])
+
+        self.earlyStopping = hparams['early_stopping']
+        self.patience = hparams['patience']
+
+        # We compute the kernel before hand to reduce repeated computation
+        # Equivalence to online learning since alpha is init as 0, see pdf
+        self._kernelMatrics_train = self._computeKernelMatrics(X_train)
+        self._kernelMatrics_val = self._computeKernelMatrics(X_val)
+
+    def save_weight(self, path):
+        # save the best result
+        with open(path, 'wb') as f:
+            np.save(f, self._alphasMatrics)
+            np.save(f, self._stored_Xtrain)
+
+    def load_weight(self, path):
+        with open(path, 'rb') as f:
+            self._alphasMatrics = np.load(f)
+            self._stored_Xtrain = np.load(f)
+
+    # Not for training time and testing time. There are separate method to speed up the calculation
+    def predict(self, input):
+        # input shape: (n, m)
+        """
+        btree Prediction
+        """
+        ker_product = self.kernel(input, self._stored_Xtrain)
+        output = self._alphasMatrics.T @ ker_product  # Dual form computation
+
+        # Cannot vectorised (across samples) since we don't know which node each sample belong to
+        # this is going to be really slow...
+        all_y_hat = np.zeros((1, input.shape[1]))
+        for m in range(output.shape[1]):
+            if output[0, m] > 0:
+                if output[1, m] > 0:
+                    if output[3, m] > 0:
+                        all_y_hat[:, m] = 0
+                    else:
+                        all_y_hat[:, m] = 1
+                elif output[4, m] > 0:
+                    all_y_hat[:, m] = 2
+                elif output[7, m] > 0:
+                    all_y_hat[:, m] = 3
+                else:
+                    all_y_hat[:, m] = 4
+            else:
+                if output[2, m] > 0:
+                    if output[5, m] > 0:
+                        all_y_hat[:, m] = 5
+                    else:
+                        all_y_hat[:, m] = 6
+                elif output[6, m] > 0:
+                    all_y_hat[:, m] = 7
+                elif output[8, m] > 0:
+                    all_y_hat[:, m] = 8
+                else:
+                    all_y_hat[:, m] = 9
+
+        return all_y_hat
+
+    def train(self):
+        # Record performance for each epoch
+        err_train_his = []
+        err_val_his = []
+
+        not_improve_count = 0
+        lowest_val_err = 1
+
+        best_weight = self._alphasMatrics
+        best_epoch = 0
+
+        # Training Loop
+        # Full derivation in report
+        for epoch in range(self.epochs):
+            cur_mistake = 0
+            for i in range(self.m):  # Loop through all sample
+                cur_X = self.X_train[:, i]
+                cur_Y = self.Y_train[:, i]
+
+                f_x = self._alphasMatrics.T @ self._kernelMatrics_train[i]  # Look up precomputed kernel
+
+                # Hardcode is bad practise =(
+                """
+                i.e.  (5,6,7,8,9)
+                f_x>0|           |f_x <=0
+                (5,6)           (7,8,9)
+                """
+                for hplane_idx, node in enumerate(self._all_node):
+                    if cur_Y in node:  # to skip necessary loop
+                        boundary = int((max(node) + min(node) + 1) / 2)
+                        if cur_Y < boundary and f_x[hplane_idx] <= 0:  # Beware of >= and >
+                            self._alphasMatrics[i, hplane_idx] += 1
+                        if cur_Y >= boundary and f_x[hplane_idx] > 0:
+                            self._alphasMatrics[i, hplane_idx] -= 1
+
+            _, cur_err_train = self._train_err()
+            _, cur_err_val = self._val_err()
+            print("Epoch: {}, Mistakes: {}, err_train: {:.3f}, err_val: {:.3f}".format(epoch,
+                                                                                       int(cur_err_train * self.m),
+                                                                                       cur_err_train,
+                                                                                       cur_err_val))
+            if self.earlyStopping:
+                if lowest_val_err <= cur_err_val:
+                    not_improve_count += 1
+                else:
+                    not_improve_count = 0
+                    lowest_val_err = cur_err_val
+                    best_weight = self._alphasMatrics
+                    best_epoch = epoch
+
+                if not_improve_count == self.patience:
+                    print("=== Early Stopping at epoch {}, best result at epoch {} ===".format(epoch, best_epoch))
+                    self._alphasMatrics = best_weight
+                    break
+
+            err_train_his.append(cur_err_train)
+            err_val_his.append(cur_err_val)
+
+        return err_train_his, err_val_his
+
+    def predict_and_visualise(self, input):
+        # For 1 sample only
+        if len(input.shape) != 2:  # Make sure dimension matches
+            input = np.expand_dims(input, axis=1)
+        result = self.predict(input)
+        print("Predicted Label: {}".format(result))
+        img = input.reshape(16, 16)
+        plt.imshow(img, cmap='gray')
+        plt.show()
+
+    # A little bit redundant here but it is easier to read in other loop with different name
+    def _train_err(self):
+        all_fx = self._alphasMatrics.T @ self._kernelMatrics_train
+        all_y_hat = np.zeros(Y_train.shape)
+        for m in range(all_fx.shape[1]):
+            if all_fx[0, m] > 0:
+                if all_fx[1, m] > 0:
+                    if all_fx[3, m] > 0:
+                        all_y_hat[:, m] = 0
+                    else:
+                        all_y_hat[:, m] = 1
+                elif all_fx[4, m] > 0:
+                    all_y_hat[:, m] = 2
+                elif all_fx[7, m] > 0:
+                    all_y_hat[:, m] = 3
+                else:
+                    all_y_hat[:, m] = 4
+            else:
+                if all_fx[2, m] > 0:
+                    if all_fx[5, m] > 0:
+                        all_y_hat[:, m] = 5
+                    else:
+                        all_y_hat[:, m] = 6
+                elif all_fx[6, m] > 0:
+                    all_y_hat[:, m] = 7
+                elif all_fx[8, m] > 0:
+                    all_y_hat[:, m] = 8
+                else:
+                    all_y_hat[:, m] = 9
+
+        correct = np.sum(self.Y_train == all_y_hat)
+        err = 1 - correct / self.Y_train.shape[1]
+        return correct, err
+
+    def _val_err(self):
+        all_fx = self._alphasMatrics.T @ self._kernelMatrics_val
+        all_y_hat = np.zeros(self.Y_val.shape)
+
+        for m in range(all_fx.shape[1]):
+            if all_fx[0, m] > 0:
+                if all_fx[1, m] > 0:
+                    if all_fx[3, m] > 0:
+                        all_y_hat[:, m] = 0
+                    else:
+                        all_y_hat[:, m] = 1
+                elif all_fx[4, m] > 0:
+                    all_y_hat[:, m] = 2
+                elif all_fx[7, m] > 0:
+                    all_y_hat[:, m] = 3
+                else:
+                    all_y_hat[:, m] = 4
+            else:
+                if all_fx[2, m] > 0:
+                    if all_fx[5, m] > 0:
+                        all_y_hat[:, m] = 5
+                    else:
+                        all_y_hat[:, m] = 6
+                elif all_fx[6, m] > 0:
+                    all_y_hat[:, m] = 7
+                elif all_fx[8, m] > 0:
+                    all_y_hat[:, m] = 8
+                else:
+                    all_y_hat[:, m] = 9
+
+        correct = np.sum(self.Y_val == all_y_hat)
+        err = 1 - correct / self.Y_val.shape[1]
+        return correct, err
+
+    # Best I can do without GPU, take up almost 50% of running time
+    def _poly_ker(self, t, x, d=4):
+        # homogeneous Polynomial kernel (no bias)
+        output = np.power((x.T @ t), d)
+        return output
+
+    def _gauss_ker(self, t, x, c=0.01):
+        # Vectorised at best by numpy
+        t_sq = np.sum(np.power(t, 2), axis=0, keepdims=True)  # (num_test, 1)
+        x_sq = np.sum(np.power(x, 2), axis=0, keepdims=True)  # (num_train, 1)
+        xTt = x.T @ t
+        output = np.exp(-c * (t_sq - 2 * xTt + x_sq.T))  # col broadcast x1sq, row broadcast x2sq
+        return output
+
+    def _computeKernelMatrics(self, input):
+        # Calculate all possible inner product (at the feature space) on the data set
+        kerMatrics = self.kernel(input, self.X_train)
+        # (number of input samples, number of output samples)
+        return kerMatrics
+
+    def _test(self):
+        print("Test")
+        print(self.kernel)
+        print(self.weight.shape)
+
+
 # Test function
 if __name__ == '__main__':
     X_train, X_test, Y_train, Y_test = readData('data/zipcombo.dat', split=True)
@@ -493,16 +769,30 @@ if __name__ == '__main__':
     # ker_perceptron = KPerceptron(X_train, Y_train, X_test, Y_test, hparams=hparams)
     # print(ker_perceptron.train())
 
-    # 1 vs 1 Multiclass perceptron
+    # # 1 vs 1 Multiclass perceptron
+    # hparams = {'kernel': 'poly',
+    #            'd': 4,
+    #            'num_class': 10,
+    #            'max_epochs': 5,
+    #            'n_dims': 256,
+    #            'early_stopping': False,
+    #            'patience': 5}
+    #
+    # ker_perceptron = KPerceptron_1v1(X_train, Y_train, X_test, Y_test, hparams=hparams)
+    # ker_perceptron.train()
+    # print(ker_perceptron.predict(X_test[:, 0:7]))
+    # print(Y_test[:, 0:7])
+
+    # binary tree Multiclass perceptron
     hparams = {'kernel': 'poly',
                'd': 4,
                'num_class': 10,
-               'max_epochs': 5,
+               'max_epochs': 20,
                'n_dims': 256,
                'early_stopping': False,
                'patience': 5}
 
-    ker_perceptron = KPerceptron_1v1(X_train, Y_train, X_test, Y_test, hparams=hparams)
+    ker_perceptron = KPerceptron_btree(X_train, Y_train, X_test, Y_test, hparams=hparams)
     ker_perceptron.train()
     print(ker_perceptron.predict(X_test[:, 0:7]))
     print(Y_test[:, 0:7])
