@@ -1,7 +1,7 @@
 # Multiclass Kernel Perceptron Library
 Simple Library for Multiclass Kernel Perceptron
 
-# Very Simple **Library** on Multiclass Kernel Perceptron implement with pure NumPy
+# Very Simple **Library** on Multiclass Kernel Perceptron implemented with (almost) pure NumPy
 
 Easy 5 step training sequence.
 
