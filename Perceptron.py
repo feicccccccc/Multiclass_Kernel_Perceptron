@@ -262,12 +262,12 @@ class KPerceptron_1v1:
         There will be 45 hyperplane for 10 class label (10 C 2)
         Each hyperplane represent binary classification for all possible combination
         i.e. (0,1) (0,2) .... (0,9) (1,2) (1,3) ... (1,9)... (8,9)
-        This is slow and just for the sake of completeness. Scale with O(n^2)
+        This is slow and just for the sake of the report. Scale with O(n^2)
         * Not implemented, not worth it to do *
         Why would I do extra thing if I will get my mark deducted and discouraged?
-        We can use do a tree like-structure to achieve best memory complexity.
+        We can use do a binary tree like to achieve best memory and computational complexity.
         i.e. (0:4, 5:9) -> (0:2, 3:4) , (5:7, 8:9) -> ...
-        It only required O(log n) hyperplane and also reduce computation complexity
+        It only required O(log n) hyperplane corresponding computation for each hyperplane.
         """
         ker_product = self.kernel(input, self._stored_Xtrain)
         output = self._alphasMatrics.T @ ker_product  # Dual form computation
@@ -278,7 +278,7 @@ class KPerceptron_1v1:
         all_pred = all_pred.astype(int)
 
         # Vote for each sample
-        all_y_hat = np.zeros(np.shape(self.Y_train))
+        all_y_hat = np.zeros((1, input.shape[1] ))  # TODO: Better define row and col vector assigmenet
         for idx, sample in enumerate(all_pred.T):
             bin_count = np.bincount(sample, minlength=self.num_class)
             y_hat = np.argmax(bin_count)  # Break even for choosing the lower class, This is not a good practise.
@@ -313,12 +313,13 @@ class KPerceptron_1v1:
                 cur_X = self.X_train[:, i]
                 cur_Y = self.Y_train[:, i]
 
-                # Predict
+                # Predict, comment out to speed up computation
                 # y_hat = self.predict(cur_X)  # Not efficient for training
                 f_x = self._alphasMatrics.T @ self._kernelMatrics_train[i]  # Look up precomputed kernel
-                y_hat = np.argmax(f_x)
-                if cur_Y != y_hat:
-                    cur_mistake += 1
+                # we only need f_x for training for each hyperplane
+                # y_hat = np.argmax(f_x)
+                # if cur_Y != y_hat:
+                #     cur_mistake += 1
 
                 for plane_idx, pair in enumerate(self._allpairs):  # Loop through all rows
                     """
@@ -340,10 +341,9 @@ class KPerceptron_1v1:
 
             _, cur_err_train = self._train_err()
             _, cur_err_val = self._val_err()
-            print("Epoch: {}, Mistakes: {}, err_train: {:.3f}, err_val: {:.3f}".format(epoch,
-                                                                                       cur_mistake,
-                                                                                       cur_err_train,
-                                                                                       cur_err_val))
+            print("Epoch: {}, err_train: {:.3f}, err_val: {:.3f}".format(epoch,
+                                                                         cur_err_train,
+                                                                         cur_err_val))
             if self.earlyStopping:
                 if lowest_val_err <= cur_err_val:
                     not_improve_count += 1
@@ -365,6 +365,8 @@ class KPerceptron_1v1:
 
     def predict_and_visualise(self, input):
         # For 1 sample only
+        if len(input.shape) != 2:  # Make sure dimension matches
+            input = np.expand_dims(input, axis=1)
         result = self.predict(input)
         print("Predicted Label: {}".format(result))
         img = input.reshape(16, 16)
@@ -401,14 +403,14 @@ class KPerceptron_1v1:
         all_pred = all_pred.astype(int)
 
         # Vote for each sample
-        all_y_hat = np.zeros(np.shape(self.Y_train))
+        all_y_hat = np.zeros(np.shape(self.Y_val))
         for idx, sample in enumerate(all_pred.T):
             bin_count = np.bincount(sample, minlength=self.num_class)
             y_hat = np.argmax(bin_count)  # Break even for choosing the lower class, This is not a good practise.
             all_y_hat[:, idx] = y_hat
 
-        correct = np.sum(self.Y_train == all_y_hat)
-        err = 1 - correct / self.Y_train.shape[1]
+        correct = np.sum(self.Y_val == all_y_hat)
+        err = 1 - correct / self.Y_val.shape[1]
         return correct, err
 
     # Best I can do without GPU, take up almost 50% of running time
@@ -493,14 +495,14 @@ if __name__ == '__main__':
 
     # 1 vs 1 Multiclass perceptron
     hparams = {'kernel': 'poly',
-               'd': 3,
+               'd': 4,
                'num_class': 10,
-               'max_epochs': 20,
+               'max_epochs': 5,
                'n_dims': 256,
                'early_stopping': False,
                'patience': 5}
 
     ker_perceptron = KPerceptron_1v1(X_train, Y_train, X_test, Y_test, hparams=hparams)
-    print(ker_perceptron.train())
-    for i in range(7):
-        ker_perceptron.predict_and_visualise(X_train[:, i])
+    ker_perceptron.train()
+    print(ker_perceptron.predict(X_test[:, 0:7]))
+    print(Y_test[:, 0:7])
