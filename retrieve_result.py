@@ -9,7 +9,7 @@ from confusion_matrics import *
 
 
 def q1():
-    with open('result/q1/q1.npy', 'rb') as f:
+    with open('result/q1_d_1vA/q1_d_1vA.npy', 'rb') as f:
         avg_train_history = np.load(f)
         std_train_history = np.load(f)
         avg_test_history = np.load(f)
@@ -30,8 +30,8 @@ def q1():
 
     fig, ax = plt.subplots()
     for d in range((avg_train_history.shape[0])):
-        # ax.plot(log_avg_train_history[d, :], '--', label='d = '+str(d+1))
-        ax.plot(log_avg_test_history[d, :], '--', label='d = ' + str(d + 1))
+        ax.plot(log_avg_train_history[d, :], '--', label='d = '+str(d+1))
+        # ax.plot(log_avg_test_history[d, :], '--', label='d = ' + str(d + 1))
         None
 
     # ax.plot(log_avg_train_history[3, :], '--', label='train')
@@ -300,4 +300,4 @@ def q2d1v1():
 
 
 if __name__ == "__main__":
-    q2d1v1()
+    q1()

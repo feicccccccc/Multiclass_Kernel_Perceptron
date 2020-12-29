@@ -624,7 +624,7 @@ class KPerceptron_btree:
     # A little bit redundant here but it is easier to read in other loop with different name
     def _train_err(self):
         all_fx = self._alphasMatrics.T @ self._kernelMatrics_train
-        all_y_hat = np.zeros(Y_train.shape)
+        all_y_hat = np.zeros(self.Y_train.shape)
         for m in range(all_fx.shape[1]):
             if all_fx[0, m] > 0:
                 if all_fx[1, m] > 0:
