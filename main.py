@@ -158,7 +158,6 @@ def q1(multiclass):
     print(std_test_history)
 
 
-
 def q1g(multiclass):
     # Import Data to get hparams
     # We will do the import at random in the run loop
@@ -322,12 +321,13 @@ def q2(multiclass):
             np.save(f, cur_run_d_historu)
 
         cur_run_best_d = np.argmin(cur_run_d_historu) + 1
-        print("=== Best d: {} for run: {}".format(cur_run_best_d, run+1))
+        print("=== Best d: {} for run: {}".format(cur_run_best_d, run + 1))
         hparams['d'] = cur_run_best_d
         ker_perceptron = KPerceptron(X_train, Y_train, X_test, Y_test, hparams=hparams)
         ker_perceptron.train()
         weight_file_name = './weight/q2_d_' + str(multiclass) + '/'
-        weight_total_name = weight_file_name + 'q2_run' + str(run) + '_d' + str(cur_run_best_d) + '_' + str(multiclass) + '_weight.npy'
+        weight_total_name = weight_file_name + 'q2_run' + str(run) + '_d' + str(cur_run_best_d) + '_' + str(
+            multiclass) + '_weight.npy'
         ker_perceptron.save_weight(weight_total_name)
 
 
@@ -413,18 +413,22 @@ def q2g(multiclass):
             np.save(f, cur_run_c_history)
 
         cur_run_best_c = ker_poly_c[np.argmin(cur_run_c_history)]
-        print("=== Best c: {} for run: {}".format(cur_run_best_c, run+1))
+        print("=== Best c: {} for run: {}".format(cur_run_best_c, run + 1))
         hparams['c'] = cur_run_best_c
         ker_perceptron = KPerceptron(X_train, Y_train, X_test, Y_test, hparams=hparams)
         ker_perceptron.train()
         weight_file_name = './weight/q2_g_' + str(multiclass) + '/'
-        weight_total_name = weight_file_name + 'q2_run' + str(run) + '_g' + str(cur_run_best_c) + '_' + str(multiclass) + '_weight.npy'
+        weight_total_name = weight_file_name + \
+                            'q2_run' + str(run) + '_g' + str(cur_run_best_c) + '_' + str(multiclass) + '_weight.npy'
         ker_perceptron.save_weight(weight_total_name)
 
 
 if __name__ == '__main__':
     # Result is stored and retrieve in retrieve_result.py
-    for multiclass in ['1v1', '1vA', 'btree']:
+    # This is mainly for training and storing the result
+
+    # for multiclass in ['1v1', '1vA', 'btree']:
+    for multiclass in ['1vA', 'btree']:
         # q1(multiclass)
         # q1g(multiclass)
         # q2(multiclass)

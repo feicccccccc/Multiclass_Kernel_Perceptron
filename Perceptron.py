@@ -197,6 +197,7 @@ class KPerceptron:
         print(self.weight.shape)
 
 
+# TODO: should inherit from KPerceptron instead to reduce repeated code
 class KPerceptron_1v1:
     def __init__(self, X_train, Y_train, X_val, Y_val, hparams=None):
 
@@ -265,6 +266,7 @@ class KPerceptron_1v1:
         This is slow and just for the sake of the report. Scale with O(n^2)
         * Not implemented, not worth it to do *
         Why would I do extra thing if I will get my mark deducted and discouraged?
+        I did it anyway =/, coz of my OCD
         We can use do a binary tree like to achieve best memory and computational complexity.
         i.e. (0:4, 5:9) -> (0:2, 3:4) , (5:7, 8:9) -> ...
         It only required O(log n) hyperplane corresponding computation for each hyperplane.
@@ -323,7 +325,7 @@ class KPerceptron_1v1:
 
                 for plane_idx, pair in enumerate(self._allpairs):  # Loop through all rows
                     """
-                    Update when it match the pari
+                    Update when it match the pair
                     i.e. (1,3) cur_Y:2 do nothing
                     (1,3) cur_Y:3 f_x:1 -> wrong, discourage
                     (1,3) cur_Y:3 f_x:3 -> correct, encourage
@@ -472,6 +474,10 @@ class KPerceptron_btree:
         # we dont really need this, the tree is hardcoded.
         # send me a pull request if you implement base on user define tree =)
         # should be easy to implement with tree search algo
+
+        # we can also use gini to split the tree on all possible split. It is going to be really time consuming
+        # for multiple run
+
         self._all_node = [(0, 1, 2, 3, 4, 5, 6, 7, 8, 9),
                           (0, 1, 2, 3, 4),
                           (5, 6, 7, 8, 9),
@@ -777,22 +783,22 @@ if __name__ == '__main__':
     #            'n_dims': 256,
     #            'early_stopping': False,
     #            'patience': 5}
+    #tron
+    # hparams = {'kernel': 'poly',
+    #            'd': 4,
+    #            'num_class': 10,
+    #            'max_epochs': 20,
+    #            'n_dims': 256,
+    #            'early_stopping': False,
+    #            'patience': 5}
     #
+    # ker_perceptron = KPerceptron_btree(X_train, Y_train, X_test, Y_test, hparams=hparams)
+    # ker_perceptron.train()
+    # print(ker_perceptron.predict(X_test[:, 0:7]))
+    # print(Y_test[:, 0:7])
     # ker_perceptron = KPerceptron_1v1(X_train, Y_train, X_test, Y_test, hparams=hparams)
     # ker_perceptron.train()
     # print(ker_perceptron.predict(X_test[:, 0:7]))
     # print(Y_test[:, 0:7])
 
-    # binary tree Multiclass perceptron
-    hparams = {'kernel': 'poly',
-               'd': 4,
-               'num_class': 10,
-               'max_epochs': 20,
-               'n_dims': 256,
-               'early_stopping': False,
-               'patience': 5}
-
-    ker_perceptron = KPerceptron_btree(X_train, Y_train, X_test, Y_test, hparams=hparams)
-    ker_perceptron.train()
-    print(ker_perceptron.predict(X_test[:, 0:7]))
-    print(Y_test[:, 0:7])
+    None
