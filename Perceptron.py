@@ -58,11 +58,14 @@ class KPerceptron:
             self._alphasMatrics = np.load(f)
             self._stored_Xtrain = np.load(f)
 
-    def predict(self, input):
+    def predict(self, input, conf = False):
         # input shape: (n, m)
         ker_product = self.kernel(input, self._stored_Xtrain)
         output = self._alphasMatrics.T @ ker_product  # Dual form computation
-        return np.argmax(output, axis=0)  # return the first occurrence term (break even)
+        if conf:
+            return np.argmax(output, axis=0), np.choose(np.argmax(output, axis=0), output)
+        else:
+            return np.argmax(output, axis=0)  # return the first occurrence term (break even)
 
     def train(self):
         # Record performance for each epoch
@@ -269,7 +272,7 @@ class KPerceptron_1v1:
         I did it anyway =/, coz of my OCD
         We can use do a binary tree like to achieve best memory and computational complexity.
         i.e. (0:4, 5:9) -> (0:2, 3:4) , (5:7, 8:9) -> ...
-        It only required O(log n) hyperplane corresponding computation for each hyperplane.
+        It only required O(log n) hyperplane and its corresponding computation for each hyperplane.
         """
         ker_product = self.kernel(input, self._stored_Xtrain)
         output = self._alphasMatrics.T @ ker_product  # Dual form computation
@@ -776,25 +779,25 @@ if __name__ == '__main__':
     # print(ker_perceptron.train())
 
     # # 1 vs 1 Multiclass perceptron
-    # hparams = {'kernel': 'poly',
-    #            'd': 4,
-    #            'num_class': 10,
-    #            'max_epochs': 5,
-    #            'n_dims': 256,
-    #            'early_stopping': False,
-    #            'patience': 5}
-    #tron
-    # hparams = {'kernel': 'poly',
-    #            'd': 4,
+    hparams = {'kernel': 'poly',
+               'd': 4,
+               'num_class': 10,
+               'max_epochs': 20,
+               'n_dims': 256,
+               'early_stopping': True,
+               'patience': 5}
+
+    # hparams = {'kernel': 'gauss',
+    #            'c': 0.014,
     #            'num_class': 10,
     #            'max_epochs': 20,
     #            'n_dims': 256,
     #            'early_stopping': False,
     #            'patience': 5}
     #
-    # ker_perceptron = KPerceptron_btree(X_train, Y_train, X_test, Y_test, hparams=hparams)
-    # ker_perceptron.train()
-    # print(ker_perceptron.predict(X_test[:, 0:7]))
+    ker_perceptron = KPerceptron_btree(X_train, Y_train, X_test, Y_test, hparams=hparams)
+    ker_perceptron.train()
+    print(ker_perceptron.predict(X_test[:, 0:7]))
     # print(Y_test[:, 0:7])
     # ker_perceptron = KPerceptron_1v1(X_train, Y_train, X_test, Y_test, hparams=hparams)
     # ker_perceptron.train()

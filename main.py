@@ -20,7 +20,7 @@ def q1g_pre():
     n = dummy_X_train.shape[0]
 
     runs = 1
-    ker_poly_c = [0.001, 0.01, 0.1, 1, 10, 100]
+    ker_poly_c = [0.0001, 0.001, 0.01, 0.1, 1, 10, 100]
     epochs = 20
 
     hparams = {'kernel': 'gauss',
@@ -53,7 +53,7 @@ def q1g_pre():
             err_train_his.append(cur_err_train_his)
             err_test_his.append(cur_err_test_his)
 
-        ker_perceptron.save_weight('./weight/q1g/pre/q1g_c' + str(c) + '_last_weight.npy')
+        # ker_perceptron.save_weight('./weight/q1g/pre/q1g_c' + str(c) + '_last_weight.npy')
         cur_d_train_history = np.vstack(err_train_his)
         cur_d_test_history = np.vstack(err_test_his)
 
@@ -63,7 +63,7 @@ def q1g_pre():
         avg_test_history[c_idx, :] = np.mean(cur_d_test_history, axis=0)
         std_test_history[c_idx, :] = np.std(cur_d_test_history, axis=0)
 
-    with open('./result/q1g/q1g_pre.npy', 'wb') as f:
+    with open('./result/q1g_pre.npy', 'wb') as f:
         np.save(f, np.array(ker_poly_c))
         np.save(f, avg_train_history)
         np.save(f, std_train_history)
@@ -268,6 +268,7 @@ def q2(multiclass):
 
         X_train, X_test, Y_train, Y_test = readData('data/zipcombo.dat', split=True)
 
+        # store all test/val error
         cur_run_d_historu = np.zeros((ker_poly_d, 1))
 
         # if run < 15:
@@ -323,8 +324,27 @@ def q2(multiclass):
         cur_run_best_d = np.argmin(cur_run_d_historu) + 1
         print("=== Best d: {} for run: {}".format(cur_run_best_d, run + 1))
         hparams['d'] = cur_run_best_d
-        ker_perceptron = KPerceptron(X_train, Y_train, X_test, Y_test, hparams=hparams)
-        ker_perceptron.train()
+
+        if multiclass == '1vA':
+            ker_perceptron = KPerceptron(X_train,
+                                         Y_train,
+                                         X_test,
+                                         Y_test,
+                                         hparams=hparams)
+        if multiclass == '1v1':
+            ker_perceptron = KPerceptron_1v1(X_train,
+                                             Y_train,
+                                             X_test,
+                                             Y_test,
+                                             hparams=hparams)
+        if multiclass == 'btree':
+            ker_perceptron = KPerceptron_btree(X_train,
+                                               Y_train,
+                                               X_test,
+                                               Y_test,
+                                               hparams=hparams)
+
+        train_err, test_err = ker_perceptron.train()
         weight_file_name = './weight/q2_d_' + str(multiclass) + '/'
         weight_total_name = weight_file_name + 'q2_run' + str(run) + '_d' + str(cur_run_best_d) + '_' + str(
             multiclass) + '_weight.npy'
@@ -415,8 +435,27 @@ def q2g(multiclass):
         cur_run_best_c = ker_poly_c[np.argmin(cur_run_c_history)]
         print("=== Best c: {} for run: {}".format(cur_run_best_c, run + 1))
         hparams['c'] = cur_run_best_c
-        ker_perceptron = KPerceptron(X_train, Y_train, X_test, Y_test, hparams=hparams)
-        ker_perceptron.train()
+
+        if multiclass == '1vA':
+            ker_perceptron = KPerceptron(X_train,
+                                         Y_train,
+                                         X_test,
+                                         Y_test,
+                                         hparams=hparams)
+        if multiclass == '1v1':
+            ker_perceptron = KPerceptron_1v1(X_train,
+                                             Y_train,
+                                             X_test,
+                                             Y_test,
+                                             hparams=hparams)
+        if multiclass == 'btree':
+            ker_perceptron = KPerceptron_btree(X_train,
+                                               Y_train,
+                                               X_test,
+                                               Y_test,
+                                               hparams=hparams)
+
+        train_err, test_err = ker_perceptron.train()
         weight_file_name = './weight/q2_g_' + str(multiclass) + '/'
         weight_total_name = weight_file_name + \
                             'q2_run' + str(run) + '_g' + str(cur_run_best_c) + '_' + str(multiclass) + '_weight.npy'
@@ -427,9 +466,10 @@ if __name__ == '__main__':
     # Result is stored and retrieve in retrieve_result.py
     # This is mainly for training and storing the result
 
-    # for multiclass in ['1v1', '1vA', 'btree']:
-    for multiclass in ['1vA', 'btree']:
+    # q1g_pre()
+
+    for multiclass in ['1v1', '1vA', 'btree']:
         # q1(multiclass)
         # q1g(multiclass)
-        # q2(multiclass)
-        q2g(multiclass)  # Add a larger range version to prove the overfit case
+        q2(multiclass)
+        q2g(multiclass)
