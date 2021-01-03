@@ -481,26 +481,16 @@ class KPerceptron_btree:
         # we can also use gini to split the tree on all possible split. It is going to be really time consuming
         # for multiple run
 
-        # self._all_node = [(0, 1, 2, 3, 4, 5, 6, 7, 8, 9),
-        #                   (0, 1, 2, 3, 4),
-        #                   (5, 6, 7, 8, 9),
-        #                   (0, 1),
-        #                   (2, 3, 4),
-        #                   (5, 6),
-        #                   (7, 8, 9),
-        #                   (3, 4),
-        #                   (8, 9)]  # Just for sake of illustration, should use a matrices for the graph(tree)
+        self._all_node = [(0, 1, 2, 3, 4, 5, 6, 7, 8, 9),
+                          (0, 1, 2, 3, 4),
+                          (5, 6, 7, 8, 9),
+                          (0, 1),
+                          (2, 3, 4),
+                          (5, 6),
+                          (7, 8, 9),
+                          (3, 4),
+                          (8, 9)]  # Just for sake of illustration, should use a matrices for the graph(tree)
         # search space scale with O(2^N)
-
-        self._all_node = [(3, 8, 0, 6, 9, 2, 5, 1, 7, 4),
-                          (3, 8, 0, 6, 9),
-                          (2, 5, 1, 7, 4),
-                          (3, 8),
-                          (0, 6, 9),
-                          (2, 5),
-                          (4, 1, 7),
-                          (6, 9),
-                          (1, 7)]
 
         self._alphasMatrics = np.zeros((self.m, total_node))  # (number of sample, number of node in tree)
         self._stored_Xtrain = self.X_train  # Keep a copy of training set, part of the "weight"
@@ -543,54 +533,30 @@ class KPerceptron_btree:
         # this is going to be really slow...
         all_y_hat = np.zeros((1, input.shape[1]))
         for m in range(output.shape[1]):
-            # if output[0, m] > 0:
-            #     if output[1, m] > 0:
-            #         if output[3, m] > 0:
-            #             all_y_hat[:, m] = 0
-            #         else:
-            #             all_y_hat[:, m] = 1
-            #     elif output[4, m] > 0:
-            #         all_y_hat[:, m] = 2
-            #     elif output[7, m] > 0:
-            #         all_y_hat[:, m] = 3
-            #     else:
-            #         all_y_hat[:, m] = 4
-            # else:
-            #     if output[2, m] > 0:
-            #         if output[5, m] > 0:
-            #             all_y_hat[:, m] = 5
-            #         else:
-            #             all_y_hat[:, m] = 6
-            #     elif output[6, m] > 0:
-            #         all_y_hat[:, m] = 7
-            #     elif output[8, m] > 0:
-            #         all_y_hat[:, m] = 8
-            #     else:
-            #         all_y_hat[:, m] = 9
             if output[0, m] > 0:
                 if output[1, m] > 0:
                     if output[3, m] > 0:
-                        all_y_hat[:, m] = 3
+                        all_y_hat[:, m] = 0
                     else:
-                        all_y_hat[:, m] = 8
+                        all_y_hat[:, m] = 1
                 elif output[4, m] > 0:
-                    all_y_hat[:, m] = 0
+                    all_y_hat[:, m] = 2
                 elif output[7, m] > 0:
-                    all_y_hat[:, m] = 6
+                    all_y_hat[:, m] = 3
                 else:
-                    all_y_hat[:, m] = 9
+                    all_y_hat[:, m] = 4
             else:
                 if output[2, m] > 0:
                     if output[5, m] > 0:
-                        all_y_hat[:, m] = 2
-                    else:
                         all_y_hat[:, m] = 5
+                    else:
+                        all_y_hat[:, m] = 6
                 elif output[6, m] > 0:
-                    all_y_hat[:, m] = 4
-                elif output[8, m] > 0:
-                    all_y_hat[:, m] = 1
-                else:
                     all_y_hat[:, m] = 7
+                elif output[8, m] > 0:
+                    all_y_hat[:, m] = 8
+                else:
+                    all_y_hat[:, m] = 9
 
         return all_y_hat
 
@@ -623,14 +589,10 @@ class KPerceptron_btree:
                 """
                 for hplane_idx, node in enumerate(self._all_node):
                     if cur_Y in node:  # to skip necessary loop
-                        boundary = int(len(node)/ 2)
-                        # if cur_Y < boundary and f_x[hplane_idx] <= 0:  # Beware of >= and >
-                        #     self._alphasMatrics[i, hplane_idx] += 1
-                        # if cur_Y >= boundary and f_x[hplane_idx] > 0:
-                        #     self._alphasMatrics[i, hplane_idx] -= 1
-                        if cur_Y in node[:boundary] and f_x[hplane_idx] <= 0:  # Beware of >= and >
+                        boundary = int((max(node) + min(node) + 1) / 2)
+                        if cur_Y < boundary and f_x[hplane_idx] <= 0:  # Beware of >= and >
                             self._alphasMatrics[i, hplane_idx] += 1
-                        if cur_Y in node[boundary:] and f_x[hplane_idx] > 0:
+                        if cur_Y >= boundary and f_x[hplane_idx] > 0:
                             self._alphasMatrics[i, hplane_idx] -= 1
 
             _, cur_err_train = self._train_err()
@@ -676,27 +638,27 @@ class KPerceptron_btree:
             if all_fx[0, m] > 0:
                 if all_fx[1, m] > 0:
                     if all_fx[3, m] > 0:
-                        all_y_hat[:, m] = 3
+                        all_y_hat[:, m] = 0
                     else:
-                        all_y_hat[:, m] = 8
+                        all_y_hat[:, m] = 1
                 elif all_fx[4, m] > 0:
-                    all_y_hat[:, m] = 0
+                    all_y_hat[:, m] = 2
                 elif all_fx[7, m] > 0:
-                    all_y_hat[:, m] = 6
+                    all_y_hat[:, m] = 3
                 else:
-                    all_y_hat[:, m] = 9
+                    all_y_hat[:, m] = 4
             else:
                 if all_fx[2, m] > 0:
                     if all_fx[5, m] > 0:
-                        all_y_hat[:, m] = 2
-                    else:
                         all_y_hat[:, m] = 5
+                    else:
+                        all_y_hat[:, m] = 6
                 elif all_fx[6, m] > 0:
-                    all_y_hat[:, m] = 4
-                elif all_fx[8, m] > 0:
-                    all_y_hat[:, m] = 1
-                else:
                     all_y_hat[:, m] = 7
+                elif all_fx[8, m] > 0:
+                    all_y_hat[:, m] = 8
+                else:
+                    all_y_hat[:, m] = 9
 
         correct = np.sum(self.Y_train == all_y_hat)
         err = 1 - correct / self.Y_train.shape[1]
@@ -710,27 +672,27 @@ class KPerceptron_btree:
             if all_fx[0, m] > 0:
                 if all_fx[1, m] > 0:
                     if all_fx[3, m] > 0:
-                        all_y_hat[:, m] = 3
+                        all_y_hat[:, m] = 0
                     else:
-                        all_y_hat[:, m] = 8
+                        all_y_hat[:, m] = 1
                 elif all_fx[4, m] > 0:
-                    all_y_hat[:, m] = 0
+                    all_y_hat[:, m] = 2
                 elif all_fx[7, m] > 0:
-                    all_y_hat[:, m] = 6
+                    all_y_hat[:, m] = 3
                 else:
-                    all_y_hat[:, m] = 9
+                    all_y_hat[:, m] = 4
             else:
                 if all_fx[2, m] > 0:
                     if all_fx[5, m] > 0:
-                        all_y_hat[:, m] = 2
-                    else:
                         all_y_hat[:, m] = 5
+                    else:
+                        all_y_hat[:, m] = 6
                 elif all_fx[6, m] > 0:
-                    all_y_hat[:, m] = 4
-                elif all_fx[8, m] > 0:
-                    all_y_hat[:, m] = 1
-                else:
                     all_y_hat[:, m] = 7
+                elif all_fx[8, m] > 0:
+                    all_y_hat[:, m] = 8
+                else:
+                    all_y_hat[:, m] = 9
 
         correct = np.sum(self.Y_val == all_y_hat)
         err = 1 - correct / self.Y_val.shape[1]
@@ -817,21 +779,21 @@ if __name__ == '__main__':
     # print(ker_perceptron.train())
 
     # # 1 vs 1 Multiclass perceptron
-    # hparams = {'kernel': 'poly',
-    #            'd': 4,
-    #            'num_class': 10,
-    #            'max_epochs': 20,
-    #            'n_dims': 256,
-    #            'early_stopping': True,
-    #            'patience': 5}
-
-    hparams = {'kernel': 'gauss',
-               'c': 0.014,
+    hparams = {'kernel': 'poly',
+               'd': 4,
                'num_class': 10,
                'max_epochs': 20,
                'n_dims': 256,
-               'early_stopping': False,
+               'early_stopping': True,
                'patience': 5}
+
+    # hparams = {'kernel': 'gauss',
+    #            'c': 0.014,
+    #            'num_class': 10,
+    #            'max_epochs': 20,
+    #            'n_dims': 256,
+    #            'early_stopping': False,
+    #            'patience': 5}
     #
     ker_perceptron = KPerceptron_btree(X_train, Y_train, X_test, Y_test, hparams=hparams)
     ker_perceptron.train()
