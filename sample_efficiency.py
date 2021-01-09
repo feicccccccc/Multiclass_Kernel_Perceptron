@@ -1,5 +1,5 @@
 """
-Specific Method for
+Specify Method for
 - train: Train the parameters
 - predict: Predict the parameters
 - reset: Init the parameters (i.e. shape / init value)
@@ -162,7 +162,7 @@ def sample_complexity(classifier, choice=(-1, 1)):
 
     for n in n_history:
         # This is our test set to estimate generalisation error
-        test_set = generate_data_set(n=n, m=100, choice=choice)
+        test_set = generate_data_set(n=n, m=1000, choice=choice)
 
         classifier.reset(n)
 
@@ -190,11 +190,11 @@ if __name__ == "__main__":
     # winnow = Winnow()
     # sample_complexity(winnow, choice=(0, 1))
 
-    oneNN = OneNN()
-    sample_complexity(oneNN)
+    # oneNN = OneNN()
+    # sample_complexity(oneNN)
 
-    # perceptron = Perceptron()
-    # sample_complexity(perceptron)
+    perceptron = Perceptron()
+    sample_complexity(perceptron)
 
     # Example training sequence
     # test_data_set = generate_data_set(3, 7)

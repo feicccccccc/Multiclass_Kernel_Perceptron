@@ -405,6 +405,57 @@ def q2d1v1():
     plt.show()
 
 
+def q1_knn():
+    with open('result/q1_knn/q1_knn.npy', 'rb') as f:
+        all_train_err = np.load(f)
+        all_test_err = np.load(f)
+
+    all_mean_train = np.mean(all_train_err, axis=1)
+    all_std_train = np.std(all_train_err, axis=1)
+
+    all_mean_test = np.mean(all_test_err, axis=1)
+    all_std_test = np.std(all_test_err, axis=1)
+
+    print("==== Result ====")
+    print("train    std     test    std")
+    for i in range(all_mean_train.shape[0]):
+        print("\hline")
+        print("{} & {:.4f} ± {:.4f} & {:.4f} ± {:.4f} \\\ ".format(i + 1,
+                                                                   all_mean_train[i],
+                                                                   all_std_train[i],
+                                                                   all_mean_test[i],
+                                                                   all_std_test[i]))
+
+    None
+
+
+def q1_lg():
+    with open('result/q1_lg/q1_lg.npy', 'rb') as f:
+        all_train_err = np.load(f)
+        all_test_err = np.load(f)
+
+    all_mean_train = np.mean(all_train_err, axis=1)
+    all_std_train = np.std(all_train_err, axis=1)
+
+    all_mean_test = np.mean(all_test_err, axis=1)
+    all_std_test = np.std(all_test_err, axis=1)
+
+    print("==== Result ====")
+    print("train    std     test    std")
+    for i in range(all_mean_train.shape[0]):
+        print("\hline")
+        print("{} & {:.4f} ± {:.4f} & {:.4f} ± {:.4f} \\\ ".format(i + 1,
+                                                                   all_mean_train[i],
+                                                                   all_std_train[i],
+                                                                   all_mean_test[i],
+                                                                   all_std_test[i]))
+
+def q2_lg():
+    with open('result/q2_lg/q2_lg.npy', 'rb') as f:
+        all_c_history = np.load(f)
+
+    None
+
 def re_eva_q2():
     """
     Re test on stored weight for q2. Get the test set and testing error on stored parameters obtained by 5-fold CV
@@ -487,4 +538,5 @@ def get_test_set(train_set):
 if __name__ == "__main__":
     # re_eva_q2()
     # q2g()
-    q3()
+    # q3()
+    q1_knn()
